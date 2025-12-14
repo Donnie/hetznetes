@@ -1,0 +1,49 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_VAR_ssh_private_key: ${{ secrets.SSH_PVT }}
+  TF_VAR_ssh_public_key: ${{ secrets.SSH_PUB }}
+  TF_VAR_hcloud_token: ${{ secrets.HET_TOK }}
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: "true"
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: ./infra
+        run: |
+          terraform init
+
+      - name: Terraform Destroy
+        working-directory: ./infra
+        run: |
+          echo "⚠️  WARNING: Destroying all Terraform-managed infrastructure"
+          echo "🚨 This action cannot be undone!"
+          terraform destroy -auto-approve
+
+          echo "✅ Terraform Destroy completed successfully"
