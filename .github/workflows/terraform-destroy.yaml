@@ -2,6 +2,12 @@ name: Terraform Destroy
 
 on:
   workflow_dispatch:
+    inputs:
+      delete_snapshots:
+        description: "Delete Packer snapshots"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -47,3 +53,19 @@ jobs:
           terraform destroy -auto-approve
 
           echo "✅ Terraform Destroy completed successfully"
+
+      - name: Install hcloud CLI
+        if: inputs.delete_snapshots == true
+        run: |
+          curl -fsSL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar -xz
+          sudo mv hcloud /usr/local/bin/hcloud
+          sudo chmod +x /usr/local/bin/hcloud
+
+      - name: Delete Packer Snapshots
+        if: inputs.delete_snapshots == true
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HET_TOK }}
+        run: |
+          for SNAPSHOT_ID in $(hcloud image list -t snapshot -l microos-snapshot=yes,creator=kube-hetzner -o columns=id -o noheader); do
+            hcloud image delete $SNAPSHOT_ID
+          done
