@@ -15,13 +15,13 @@ module "kube-hetzner" {
   # ssh_public_key  = file("~/.ssh/hetznetes.pub")
 
   # Configure Flannel to use the correct network interface for Hetzner Cloud
-  # Hetzner Cloud uses enp7s0 for the private network interface, not eth1
-  control_planes_custom_config = {
-    "flannel-iface" = "enp7s0"
-  }
-  agent_nodes_custom_config = {
-    "flannel-iface" = "enp7s0"
-  }
+  # Hetzner Cloud sometimes uses enp7s0 for the private network interface, not eth1
+  # control_planes_custom_config = {
+  #   "flannel-iface" = "enp7s0"
+  # }
+  # agent_nodes_custom_config = {
+  #   "flannel-iface" = "enp7s0"
+  # }
 
   control_plane_nodepools = [
     {

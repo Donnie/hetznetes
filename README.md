@@ -8,9 +8,63 @@ The entire setup is managed from one repo via GitOps, this one.
 
 ## What kind of a cluster setup do I get?
 
-You get one control plane and one worker node with a load balancer setup by default by running this setup.
+This setup provisions a production-ready Kubernetes cluster with the following specifications:
 
-Simply run `terraform output -raw kubeconfig > ~/.kube/config` to get the Kubeconfig and then access via `k9s` or `kubectl`.
+### Operating System & Distribution
+
+- **Base OS**: [OpenSUSE MicroOS](https://microos.opensuse.org/) (Tumbleweed-based)
+  - Container-optimized, immutable Linux distribution
+  - Uses transactional-updates for atomic system updates
+  - Pre-configured as a Container Host variant
+  - Built via Packer from official OpenSUSE MicroOS Cloud images (see `packer/hcloud-microos-snapshots.pkr.hcl`)
+
+### Kubernetes Distribution
+
+- **k3s**: Lightweight, certified Kubernetes distribution
+  - Single binary installation
+  - Includes essential components bundled (etcd, kube-proxy, flannel, etc.)
+  - SELinux policies enabled via `k3s-selinux` v1.6 (configured in Packer build)
+
+### Container Network Interface (CNI)
+
+- **Flannel**: VXLAN-based overlay network
+  - Configured to use `enp7s0` network interface (Hetzner Cloud's private network interface)
+  - Custom configuration applied to both control plane and worker nodes (see `infra/main.tf` lines 19-24)
+  - Provides pod-to-pod networking across the cluster
+
+### Infrastructure Components
+
+- **Cloud Provider**: Hetzner Cloud (HCloud)
+- **Network Region**: `eu-central`
+- **Location**: `nbg1` (Nuremberg, Germany)
+- **Server Type**: `cx23` (2 vCPUs, 4GB RAM, 40GB disk) for both control plane and workers
+- **Node Configuration**:
+  - 1 control plane node (no taints, allowing workloads)
+  - 1 worker node
+  - Load balancer automatically provisioned by the Terraform module
+
+### System Packages & Tools
+
+The MicroOS base image includes essential packages for Kubernetes operations:
+
+- **Networking**: `wireguard-tools`, `bind-utils`, `mtr`, `tcpdump`
+- **Storage**: `open-iscsi`, `nfs-client`, `xfsprogs`, `cryptsetup`, `lvm2`, `cifs-utils`
+- **Security**: `restorecond`, `policycoreutils`, `setools-console`, `audit`, `udica` (SELinux utilities)
+- **System**: `fuse`, `git`, `bash-completion`, `qemu-guest-agent`
+- **Network Management**: NetworkManager (configured for Hetzner Cloud networking)
+
+### Configuration Management
+
+- **Terraform Module**: [`kube-hetzner/kube-hetzner/hcloud`](https://github.com/mysticaltech/terraform-hcloud-kube-hetzner) v2.18.4
+  - Handles cluster bootstrap, node provisioning, and networking setup
+  - Manages Hetzner Cloud Load Balancer for API server access
+  - Configures k3s installation and cluster join process
+
+### Key Configuration Files
+
+- **`infra/main.tf`**: Terraform module configuration defining node pools, network settings, and Flannel CNI configuration
+- **`packer/hcloud-microos-snapshots.pkr.hcl`**: Packer template that builds the MicroOS snapshot with all required packages and SELinux policies
+- **`infra/terraform.tfvars`**: Project-specific variables (GCP project ID and region for state backend)
 
 ## Shoulders of Giants
 
@@ -27,6 +81,8 @@ GCP Object Storage cost is close to zero for the use case here.
 GCP Object Storage also has native locking support.
 
 # Getting Started
+
+The setup is totally done on Github Workflows, except in order to get the `.kube/config` securely you must be able to run the below mentioned Terraform locally.
 
 ## On Google Cloud
 
@@ -102,3 +158,7 @@ Packer creates the necessary MicroOS Distro Snapshot, to be used on the VMs.
 ### Run Terraform Plan and Apply
 
 Finally run the Terraform workflow. You may run it multiple times if the process breaks in between.
+
+## Accessing Your Cluster
+
+Simply run `terraform output -raw kubeconfig > ~/.kube/config` locally to get the Kubeconfig and then access via `k9s` or `kubectl`.
