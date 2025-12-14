@@ -1,0 +1,47 @@
+name: State Bucket Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/state-bucket.yaml"
+
+permissions:
+  id-token: write
+
+jobs:
+  create-bucket:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Verify bucket access
+        env:
+          BUCKET_NAME: ${{ vars.STATE_BUCKET_NAME }}
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          gcloud storage buckets describe gs://$BUCKET_NAME
+
+          DATETIME=$(date +%s)
+          echo "Test file created at $(date)" > test-file-$DATETIME.txt
+          gcloud storage cp test-file-$DATETIME.txt gs://$BUCKET_NAME/
+
+          gcloud storage ls gs://$BUCKET_NAME/
+
+          gcloud storage rm gs://$BUCKET_NAME/test-file-$DATETIME.txt
+          rm test-file-$DATETIME.txt
+
+          echo "✅ Bucket access verification completed"

@@ -1,0 +1,36 @@
+name: Packer Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "packer/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "packer/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-packer@v3.1.0
+      - name: Packer Init
+        working-directory: packer
+        run: packer init hcloud-microos-snapshots.pkr.hcl
+      - name: Validate
+        working-directory: packer
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HET_TOK }}
+        id: validate
+        run: packer validate hcloud-microos-snapshots.pkr.hcl
+      - name: Packer Build
+        if: github.ref == 'refs/heads/main' && steps.validate.outcome == 'success'
+        working-directory: packer
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HET_TOK }}
+        run: packer build hcloud-microos-snapshots.pkr.hcl
