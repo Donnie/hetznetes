@@ -162,3 +162,24 @@ Finally run the Terraform workflow. You may run it multiple times if the process
 ## Accessing Your Cluster
 
 Simply run `terraform output -raw kubeconfig > ~/.kube/config` locally to get the Kubeconfig and then access via `k9s` or `kubectl`.
+
+## Destroying Everything
+
+To completely tear down your infrastructure, use the **Terraform Destroy** GitHub workflow.
+
+### Run Terraform Destroy
+
+1. Go to **Actions** > **Terraform Destroy** in your GitHub repository
+2. Click **Run workflow**
+3. Optionally enable **Delete Packer snapshots** if you want to remove the Packer-created MicroOS snapshots from Hetzner Cloud
+4. Click **Run workflow** to start the destruction process
+
+### Packer Delete Check
+
+The workflow includes a conditional step that only deletes Packer snapshots if the `delete_snapshots` input is set to `true`. This check ensures that:
+
+- Snapshots are only deleted when explicitly requested
+- The `hcloud` CLI is only installed when needed
+- Only Snapshots matching the labels `microos-snapshot=yes` and `creator=kube-hetzner` are identified and removed
+
+**Note**: Destroying the infrastructure will remove all VMs, load balancers, and associated resources. This action cannot be undone. Make sure you have backups of any important data before proceeding.
